@@ -1,0 +1,44 @@
+###################
+#		  #
+#   hog_report    #
+#		  #
+###################
+
+The hog_report is designed to generate a disk usage report for a specified directory on a remote server via SSH, filter users with usage exceeding a specified threshold, and store the results in a SQLite3 table.
+
+Features
+1. Generates a disk usage report for a specified directory on a remote server.
+2. Filters users with usage exceeding a specified threshold (in terabytes or gigabytes).
+3. Stores the filtered results in a SQLite3 table for further analysis.
+
+Execute hog_report from the command line using WSControl with the following arguments:
+
+ON(or FOR?) server DO hog_report FOR(?) <directory> <threshold>
+
+<server>: The hostname or IP address of remote server(s).
+<directory>: The directory path for which to generate the hog report on the remote server.
+<threshold>: The threshold for usage, specified as a number followed by 'T' for terabytes or 'G' for gigabytes (e.g., "2T" for 2 terabytes or "2G" for 2 gigabytes).
+
+Example Usage:
+python wscontrol.py
+ON chem.ws DO hog_report FOR /home 1T
+
+This command will generate a hog report for the "/home" directory on the "chem.ws" servers, filtering users with usage exceeding 1 Terabyte, and store the results in a SQLite3 database named "hog_report.db".
+
+Requirements
+Python 3.11
+
+Accessing the Database: Once the hog report is generated and stored in the SQLite3 database, you can access the database using any SQLite3 client or command-line tool. For example, you can use the following command to open the database in the SQLite3 command-line interface:
+
+TO DO
+
+
+Example Query: Here's an example SQL query to retrieve the top 10 hogs for the most recent report:
+
+TO DO: Access the table
+SELECT * 
+FROM hog_report
+ORDER BY usage DESC
+LIMIT 10;
+
+This query will return the top 10 users with the highest disk usage from the most recent hog report.
