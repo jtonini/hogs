@@ -2,11 +2,8 @@
 
 import typing
 from typing import *
-import paramiko
-import sqlite3
 
 min_py = (3, 11)
-
 
 ###
 # Standard imports, starting with os and sys
@@ -70,13 +67,13 @@ __email__ = ['gflanagin@richmond.edu', 'jtonini@richmond.edu']
 __status__ = 'in progress'
 __license__ = 'MIT'
 
-@trap
-def parse_threshold(threshold_str):
+####
+# Step 1: Parse the threshold string to extract the value and unit.
+###
 
-    ###
-    # Step 1: Parse the threshold string to extract the value and unit.
-    ###
-    
+@trap
+    def parse_threshold(threshold_str) -> str:
+
     """
     Parameters:
         threshold_str (str): The threshold string specified by the user (e.g., '2T' for 2 terabytes).
@@ -93,12 +90,12 @@ def parse_threshold(threshold_str):
     else:
         raise ValueError("Invalid threshold format. Please specify a number followed by 'T' or 'G'.")
 
+###
+# Step 2: Convert the threshold value to the appropriate format for the xfs_quota command.
+###
+
 @trap
-def convert_threshold(value, unit):
-    
-    ###
-    # Step 2: Convert the threshold value to the appropriate format for the xfs_quota command.
-    ###
+def convert_threshold(value, unit) -> str:
 
     """
     Parameters:
@@ -116,13 +113,13 @@ def convert_threshold(value, unit):
     else:
         raise ValueError("Invalid threshold unit. Please specify 'T' for terabytes or 'G' for gigabytes.")
 
-@trap
-def hog_report(server, directory, threshold_value, threshold_unit):
-    
-    ###
-    # Step 3. Perform a hog report.
-    ###
+###
+# Step 3. Perform a hog report.
+###
 
+@trap
+def hogs_main(server:str, directory:str, threshold_value:float, threshold_unit:str) -> str:
+    
     """
     Perform a hog report for a specified directory on a remote host via SSH, filtering users with usage 
     exceeding a specified threshold, and store the results in a SQLite3 database.
@@ -134,7 +131,7 @@ def hog_report(server, directory, threshold_value, threshold_unit):
         threshold_unit (str): The unit of the threshold ('T' for terabytes or 'G' for gigabytes).
     """
     
-    print("Generating hog report for {} on server '{}' with threshold {}{}...".format(directory, server, threshold_value, threshold_unit))
+    print(f"Generating hog report for {directory} on server '{server}' with threshold {threshold_value}{threshold_unit}")
     
     # Convert threshold to appropriate format for xfs_quota command
     threshold = convert_threshold(threshold_value, threshold_unit)
@@ -144,7 +141,9 @@ def hog_report(server, directory, threshold_value, threshold_unit):
     
     result=Sloppytree(dorunrun("""ssh {server} "{cmd}" """, result_type=dict))
     if not result.OK:
-        #
+        # in subprocess
+#       if "Permission denied" in error.decode():
+             
         pass
 
     for line in result.stdout.split():
@@ -160,23 +159,22 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Parse command-line arguments; TO DO: implement in argparse
-    server = sys.argv[1]
-    directory = sys.argv[2]
-    threshold_value, threshold_unit = parse_threshold(sys.argv[3])
+    #server = sys.argv[1]
+    #directory = sys.argv[2]
+    #threshold_value, threshold_unit = parse_threshold(sys.argv[3])
 
-   # parser = argparse.ArgumentParser(prog="hog_report",
-   #         description="Filtering users with usage exceeding a specified threshold")
-   # 
-   # parser.add_argument('-s', '--server', type=str, required=True,
-   #         help="Host name or IP address of one or more workstations.")
-
-   #         help="Directory(ies) to be filtered")
-   # parser.add_argument('-th', '--threshold', type=str, default="",
-   #         help="Threshold to filter users by stored data.")
-   # 
-   # myargs = parser.parse_args()
-   # verbose = myargs.verbose
+   parser = argparse.ArgumentParser(prog="hogs_main",
+                                    description="Filtering users with usage exceeding a specified threshold")
+    parser.add_argument('-s', '--server', type=str, required=True,
+                        help="Host name or IP address of one or more workstations.")
+    parser.add_argument('-d', '--directory', type=str, required=True, 
+                        help="Directory(ies) to be filtered")
+    parser.add_argument('-th', '--threshold', type=str, default="",
+                        help="Threshold to filter users by stored data.")
+ 
+   myargs = parser.parse_args()
+   verbose = myargs.verbose
 
     # Call hog_report function with provided parameters
-    hog_report(server, directory, threshold_value, threshold_unit)
+    hogs_main(server, directory, threshold_value, threshold_unit)
 
