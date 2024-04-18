@@ -3,7 +3,7 @@
 import typing
 from typing import *
 
-min_py = (3, 11)
+min_py = (3, 8)
 
 ###
 # Standard imports, starting with os and sys
@@ -22,7 +22,7 @@ import contextlib
 from   datetime import datetime
 import getpass
 import logging
-import tomllib
+import toml as tomllib
 import paramiko
 import sqlite3
 import re
@@ -44,7 +44,6 @@ from   sqlitedb import SQLiteDB
 from   urdecorators import trap
 from   urlogger import URLogger, piddly
 from   dorunrun import dorunrun
-from   Sloppytree import Sloppytree
 
 ###
 # imports and objects that are a part of this project
@@ -72,8 +71,7 @@ __license__ = 'MIT'
 ###
 
 @trap
-    def parse_threshold(threshold_str) -> str:
-
+def parse_threshold(threshold_str) -> str:
     """
     Parameters:
         threshold_str (str): The threshold string specified by the user (e.g., '2T' for 2 terabytes).
@@ -136,10 +134,10 @@ def hogs_main(server:str, directory:str, threshold_value:float, threshold_unit:s
     # Convert threshold to appropriate format for xfs_quota command
     threshold = convert_threshold(threshold_value, threshold_unit)
     
-    # Execute command on remote host via SSH; TO DO: how to include forkssh to perform the ssh part?
-    cmd = f"sudo xfs_quota -x -c 'report -u -ah' {}"
+    # Execute command on remote host via SSH; TO DO: how to include the ssh part?
+    cmd = f"sudo xfs_quota -x -c 'report -u -ah' {directory}"
     
-    result=Sloppytree(dorunrun("""ssh {server} "{cmd}" """, result_type=dict))
+    result=Sloppytree(dorunrun(""" ssh server} "{cmd}" """, result_type=dict))
     if not result.OK:
         # in subprocess
 #       if "Permission denied" in error.decode():
@@ -154,7 +152,7 @@ def hogs_main(server:str, directory:str, threshold_value:float, threshold_unit:s
 
 if __name__ == "__main__":
     # Check if server name, directory, and threshold are provided as command-line arguments
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 1:
         print("Usage: python hog_report.py <server> <directory> <threshold>")
         sys.exit(1)
 
@@ -163,17 +161,13 @@ if __name__ == "__main__":
     #directory = sys.argv[2]
     #threshold_value, threshold_unit = parse_threshold(sys.argv[3])
 
-   parser = argparse.ArgumentParser(prog="hogs_main",
-                                    description="Filtering users with usage exceeding a specified threshold")
-    parser.add_argument('-s', '--server', type=str, required=True,
-                        help="Host name or IP address of one or more workstations.")
-    parser.add_argument('-d', '--directory', type=str, required=True, 
-                        help="Directory(ies) to be filtered")
-    parser.add_argument('-th', '--threshold', type=str, default="",
-                        help="Threshold to filter users by stored data.")
+    parser = argparse.ArgumentParser(prog="hogs_main", description="Filtering users with usage exceeding a specified threshold")
+    parser.add_argument('-s', '--server', type=str, required=True, help="Host name or IP address of one or more workstations.")
+    parser.add_argument('-d', '--directory', type=str, required=True, help="Directory(ies) to be filtered")
+    parser.add_argument('-th', '--threshold', type=str, required=True, help="Threshold to filter users by stored data.")
  
-   myargs = parser.parse_args()
-   verbose = myargs.verbose
+    myargs = parser.parse_args()
+    verbose = myargs.verbose
 
     # Call hog_report function with provided parameters
     hogs_main(server, directory, threshold_value, threshold_unit)
