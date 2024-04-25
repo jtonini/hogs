@@ -1,21 +1,13 @@
-DROP VIEW  IF EXISTS v_recent_hogs;
-DROP VIEW  IF EXISTS v_hosts;
-DROP INDEX IF EXISTS timestamp_index;
-DROP TABLE IF EXISTS df_stat;
-DROP TABLE IF EXISTS hosts;
+-- Create a new SQLite3 database named 'user_quota.db' if it doesn't exist
+CREATE DATABASE IF NOT EXISTS user_quota.db;
 
-CREATE TABLE hogs (
-        t datetime default current_timestamp,
-        host varchar(20),
-        cpu_used varchar(20),
-        cpu_total varchar(20),
-        mem_used varchar(20),
-        mem_total varchar(20)
-        );
+-- Connect to the 'user_quota.db' database
+ATTACH DATABASE 'user_quota.db' AS user_quota;
 
-CREATE INDEX timestamp_idx on hogs(measured_at);
-
-CREATE VIEW v_hosts as SELECT * FROM hosts ORDER BY host, partition;
-
-CREATE VIEW v_recent_measurements as SELECT * FROM df_stat ORDER BY measured_at DESC;
-
+-- Create a table to store user quota information
+CREATE TABLE IF NOT EXISTS user_quota (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    directory TEXT NOT NULL,
+    user TEXT NOT NULL,
+    quota_used TEXT NOT NULL
+);
