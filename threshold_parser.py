@@ -69,36 +69,58 @@ __license__ = 'MIT'
 ####
 # Step 1: Parse the threshold string to extract the value and unit.
 ###
+import argparse
+import re
 
-@trap
-def parse_threshold_main(threshold_str:str) -> str:
+def parse_threshold_main(threshold:str) -> tuple:
     """
+    Parse the threshold string to extract the value and unit.
+
     Parameters:
         threshold_str (str): The threshold string specified by the user (e.g., '2T' for 2 terabytes).
 
     Returns:
-        tuple: A tuple containing the threshold value as a float and the unit as a string ('T' or 'G').
+        tuple: A tuple containing the threshold value as a float and the unit as a string ('T', 'G', 'M', or 'K').
     """
-    
-    match = re.match(r'^(\d+)([TG])$', threshold_str)
+
+    match = re.match(r'^(\d+(\.\d+)?)([TGMK])$', threshold)
     if match:
         threshold_value = float(match.group(1))
-        threshold_unit = match.group(2)
+        threshold_unit = match.group(3)
         return threshold_value, threshold_unit
     else:
-        raise ValueError("Invalid threshold format. Please specify a number followed by 'T' or 'G'.")
+        raise ValueError("Invalid threshold format. Please specify a number followed by 'T', 'G', 'M', or 'K'.")
+
+def convert_threshold_main(threshold_value: float, threshold_unit: str) -> float:
+    """
+    Convert the threshold value to the appropriate format for xfs_quota command.
+
+    Args:
+        threshold_value (float): The threshold value.
+        threshold_unit (str): The unit of the threshold ('T' for terabytes, 'G' for gigabytes, 'M' for megabytes, or 'K' for kilobytes).
+
+    Returns:
+        float: The threshold value in terabytes.
+    """
+    if threshold_unit == 'T':
+        return threshold_value
+    elif threshold_unit == 'G':
+        return round(threshold_value / 1024, 3)
+    elif threshold_unit == 'M':
+        return round(threshold_value / (1024 * 1024), 3)
+    elif threshold_unit == 'K':
+        return round(threshold_value / (1024 * 1024 * 1024), 3)
+    else:
+        raise ValueError("Invalid threshold unit. Please specify 'T', 'G', 'M', or 'K'.")
 
 if __name__ == "__main__":
-    # Check if threshold is provided as command-line arguments
-   # if len(sys.argv) != 1:
-   #     print("Usage: python parse_threshold_main.py <threshold>")
-   #     sys.exit(1)
+    parser = argparse.ArgumentParser(description="Parse and convert threshold value.")
+    parser.add_argument('-th', '--threshold', type=str, required=True, help="Threshold string specified by the user (e.g., '2T' for 2 terabytes).")
+    args = parser.parse_args()
 
-    parser = argparse.ArgumentParser(prog="parse_threshold_main", description="Filtering users with usage exceeding a specified threshold")
-    parser.add_argument('-th', '--threshold', type=str, required=True, help="Threshold to filter users by stored data.")
- 
-    myargs = parser.parse_args()
-
-    # Call parse_threshold_main function with provided parameters
-    threshold_value, threshold_unit = parse_threshold_main(myargs.threshold)
+    threshold_value, threshold_unit = parse_threshold_main(args.threshold)
     print(f"Parsed threshold value: {threshold_value}, unit: {threshold_unit}")
+
+    formatted_threshold_value = convert_threshold_main(threshold_value, threshold_unit)
+    print(f"Formatted threshold: {formatted_threshold_value} Tb")
+

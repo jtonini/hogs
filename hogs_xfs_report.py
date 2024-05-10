@@ -48,8 +48,8 @@ from   dorunrun     import dorunrun
 # imports and objects that are a part of this project
 ###
 
-from threshold_parser    import parse_threshold_main as parse_threshold
-from threshold_converter import convert_threshold_main as convert_threshold
+from    threshold_parser    import  parse_threshold_main    as  parse_threshold
+from    threshold_parser    import  convert_threshold_main  as  convert_threshold
 
 ###
 # Global objects and initializations
@@ -69,32 +69,30 @@ __status__ = 'in progress'
 __license__ = 'MIT'
 
 @trap
-def hogs_xfs_main(server:str, directory:str, threshold:str) -> str:
+def hogs_xfs_main(server:str, directory_path:str) -> dict:
     
     """
-    Perform a hog report for a specified directory with XFS filesystem on a remote host via SSH, filtering uses    with usage exceeding a specified threshold, and store the results in a SQLite3 database.
+    Perform a hog report for a specified directory with XFS filesystem on a remote host via SSH, filtering users with usage exceeding a specified threshold, and store the results in a SQLite3 database.
 
     Parameters:
         server (str): The hostname or IP address of the remote server.
         directory (str): The directory path for which to generate the hog report.
-        threshold: value (float) for usage and unit (str) ('T' for terabytes or 'G' for gigabytes).
     """
     
-    print(f"Generating hog report for {directory} on server '{server}' with threshold {threshold_value}{threshold_unit}")
+    print(f"Generating quota report for {directory_path} on server '{server}'")
     
     # Execute command on remote host via SSH; TO DO: how to include the ssh part?
-    cmd = f"sudo xfs_quota -x -c 'report -u -ah' {directory}"
-    
+    cmd = f"""ssh -o ConnectTimeout=1 root@{server} 'sudo xfs_quota -x -c "report -u -ah" {directory_path}'"""    
     #result=SloppyTree(dorunrun(""" ssh {server} "{cmd}" """, return_datatype=dict)) # how to ssh as root?
-    result=dorunrun(cmd, return_datatype=dict)
-    if not result.OK:
+    result=SloppyTree(dorunrun(cmd, return_datatype=dict))
+    #if not result.OK:
         # in subprocess
 #       if "Permission denied" in error.decode():
              
-        pass
+    #    pass
 
     #for line in result.stdout.split():
-    #    user, space, _0, _1, _2, _3 = line.split()
+    #directory_name = directory_line[start_index:end_index]    user, space, _0, _1, _2, _3 = line.split()
     #    space = linuxutils.byte_size(space)
     
     # Extract directory information
@@ -134,9 +132,11 @@ def hogs_xfs_main(server:str, directory:str, threshold:str) -> str:
     
         user = line[0]
         quota_used = line[1]
-    
+        threshold_value, threshold_unit = parse_threshold(quota_used)
+        quota_used_tb = convert_threshold(threshold_value, threshold_unit)
+   
         # Create a unique string representation of the line
-        line_str = f"{directory_name} {user} {quota_used}"
+        line_str = f"{directory_name} {user} {quota_used_tb}"
     
         # Check if the line is unique, if not, skip it
         if line_str in unique_lines:
@@ -145,30 +145,23 @@ def hogs_xfs_main(server:str, directory:str, threshold:str) -> str:
         # Add the line to the set of unique lines
         unique_lines.add(line_str)
 
-        quota_info.append({'directory': directory_name, 'user': users, 'quota_used': quota_used})
+        quota_info.append({'directory': directory_name, 'user': user, 'quota_used_tb': quota_used_tb})
 
-# Print the extracted information
+    # Print the extracted information
     for info in quota_info[1:]:
         print(info)
     #return "Hog report generated successfully and stored in hog_report.db"
+    return quota_info
 
 if __name__ == "__main__":
-    # Check if server name, directory, and threshold are provided as command-line arguments
-    #if len(sys.argv) != 1:
-    #    print("Usage: python hog_report.py <server> <directory> <threshold>")
-    #    sys.exit(1)
-
-    parser = argparse.ArgumentParser(prog="hogs_xfs_main", description="Filtering users with usage exceeding a specified threshold")
-    parser.add_argument('-s', '--server', type=str, required=True, help="Host name or IP address of one or more workstations.")
-    parser.add_argument('-d', '--directory', type=str, required=True, help="Directory(ies) to be filtered")
-    parser.add_argument('-th', '--threshold', type=str, required=True, help="Threshold to filter users by stored data.")
- 
-    myargs = parser.parse_args()
-    verbose = myargs.verbose
-
-    # Call parse_threshold_main function with provided threshold string
-    threshold_value, threshold_unit = parse_threshold(threshold)
-    formatted_threshold = convert_threshold(threshold_value, threshold_unit)
     
+    parser = argparse.ArgumentParser(prog="hogs_xfs_main", description="Filtering users with usage")
+    parser.add_argument('-s', '--servers', nargs="+", required=True, help="List of servers or host name or IP address of one or more workstations.")
+    parser.add_argument('-d', '--directory_path', type=str, required=True, help="Directories to be filtered")
+    myargs = parser.parse_args()
+    #verbose = myargs.verbose
+    
+    for server in myargs.servers:
+
     # Call hog_report function with provided parameters
-    hogs_xfs_main(server, directory, formatted_threshold)
+        hogs_xfs_main(server, myargs.directory_path)
