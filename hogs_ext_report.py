@@ -71,9 +71,49 @@ __email__ = ['gflanagin@richmond.edu', 'jtonini@richmond.edu']
 __status__ = 'in progress'
 __license__ = 'MIT'
 
+
 @trap
-def hogs_ext_main(server:str, directory_path:str) -> str:
-    
+def parse_output(output: str) -> dict:
+    directory_line = output.split('\n')[0]
+    words = re.split(r'\W+', directory_line)
+    directory_name = words[-1]
+
+    output_lines = output.split('\n')[3:]
+    output_lines = output_lines[2:]
+
+    user_data = []
+    unique_lines = set()
+
+    for line in output_lines:
+        if line:  # Check if the line is not empty
+            parts = line.split()
+            if len(parts) >= 2:
+                user_data.append(parts)
+
+    quota_info = []
+
+    for line in user_data:
+        if len(line) < 2:
+            continue  # Skip lines with insufficient data
+
+        user = line[0]
+        blocks = line[2]
+
+        quota_used_tb = round(int(blocks) * block_size / 1024**4, 3)  # For TB
+
+        line_str = f"{directory_name} {user} {quota_used_tb}"
+
+        if line_str in unique_lines:
+            continue
+
+        unique_lines.add(line_str)
+
+        quota_info.append({'directory': directory_name, 'user': user, 'quota_used_tb': quota_used_tb})
+
+    return quota_info
+
+@trap
+def hogs_ext_main(server: str, directory_path: str) -> dict:
     """
     Perform a hog report for a specified directory with XFS filesystem on a remote host via SSH, filtering uses    with usage exceeding a specified threshold, and store the results in a SQLite3 database.
 
@@ -107,75 +147,13 @@ def hogs_ext_main(server:str, directory_path:str) -> str:
     # Extract the lines containing user quota information
     output = result['stdout'].split('\n')[3:]
     output = output[2:]    
-    # Initialize an empty list to store extracted information
-    user_data = []    
-
-    # Iterate over each line to extract user quota information
-    
-    for line in output:
-        # Split the line into components
-        if line: # Check if the line is not empty
-            parts = line.split()
-            if len(parts) >= 2:
-                user_data.append(parts)
-
-    # Extract directory, user, and quota used
-    device = directory_line.split()[-1]
-    cmd = f"""ssh -o ConnectTimeout=1 root@{server} 'blockdev --getbsz {device}'"""
-    result_block_size = SloppyTree(dorunrun(cmd, return_datatype=dict))
-    block_size = result_block_size['stdout']
-    block_size = int(block_size)
-    
-    quota_info = []
-    
-    # Use a set to keep track of unique lines
-    unique_lines = set()
-
-    for line in user_data:
-        if len(line) < 2:
-            continue  # Skip lines with insufficient data
-    
-        user = line[0]
-        blocks = line[2]
-        
-        quota_used_tb = round(int(blocks) * block_size / 1024**4, 3) # For TB
-        
-        # Convert quota_used to TB
-        #threshold_value, threshold_unit = parse_threshold(quota_used)
-        #quota_used_tb = convert_threshold(threshold_value, threshold_unit)
-
-        # Create a unique string representation of the line
-        line_str = f"{directory_name} {user} {quota_used_tb}"
-    
-        # Check if the line is unique, if not, skip it
-        if line_str in unique_lines:
-            continue
-
-        # Add the line to the set of unique lines
-        unique_lines.add(line_str)
-
-        quota_info.append({'directory': directory_name, 'user': user, 'quota_used_tb': quota_used_tb})
-
-# Print the extracted information
-    for info in quota_info[1:]:
-        print(info)
-    #return "Hog report generated successfully and stored in hog_report.db"
-    return quota_info
+    return output
 
 if __name__ == "__main__":
-    # Check if server name, directory, and threshold are provided as command-line arguments
-    #if len(sys.argv) != 1:
-    #    print("Usage: python hog_report.py <server> <directory> <threshold>")
-    #    sys.exit(1)
-
     parser = argparse.ArgumentParser(prog="hogs_ext_main", description="Filtering users with usage exceeding a specified threshold")
     parser.add_argument('-s', '--servers', nargs="+", required=True, help="List of servers or host name or IP address of one or more workstations.")
     parser.add_argument('-d', '--directory_path', type=str, required=True, help="Directory(ies) to be filtered")
- 
     myargs = parser.parse_args()
-    #verbose = myargs.verbose
 
     for server in myargs.servers:
-
-    # Call hog_report function with provided parameters
         hogs_ext_main(server, myargs.directory_path)

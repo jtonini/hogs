@@ -82,86 +82,36 @@ def hogs_xfs_main(server:str, directory_path:str) -> dict:
     print(f"Generating quota report for {directory_path} on server '{server}'")
     
     # Execute command on remote host via SSH; TO DO: how to include the ssh part?
-    cmd = f"""ssh -o ConnectTimeout=1 root@{server} 'sudo xfs_quota -x -c "report -u -ah" {directory_path}'"""    
+    ssh_cmd = f"""sudo xfs_quota -x -c "report -u -ah" {directory_path}"""    
     #result=SloppyTree(dorunrun(""" ssh {server} "{cmd}" """, return_datatype=dict)) # how to ssh as root?
-    result=SloppyTree(dorunrun(cmd, return_datatype=dict))
-    #if not result.OK:
-        # in subprocess
-#       if "Permission denied" in error.decode():
-             
-    #    pass
-
-    #for line in result.stdout.split():
-    #directory_name = directory_line[start_index:end_index]    user, space, _0, _1, _2, _3 = line.split()
-    #    space = linuxutils.byte_size(space)
+    try:
+        # Try connecting as root first
+        result=SloppyTree(dorunrun(f"ssh -o ConnectTimeout=1 root@{server} '{ssh_cmd}'", return_datatype=dict))
+        if result.OK:
+            return parse_output(result.stdout)
+    except:
+        print("Connection as root failed")
     
-    # Extract directory information
-    directory_line = result['stdout'].split('\n')[0]
-    start_index = directory_line.find('/') + 1
-    end_index = directory_line.find(' (')  # Extracting the directory name from the line
-    
-    directory_name = directory_line[start_index:end_index]
+    try:
+        # If connecting as root fails, try connecting as installer
+        cmd = f"""sudo xfs_quota -x -c "report -u -ah" {directory_path}"""
+        ssh_cmd = f"""ssh spdrstor01 '{cmd}'"""
+        result = dorunrun(f"ssh -o ConnectTimeout=1 installer@{server} '{ssh_cmd}'", return_datatype=dict)
+        if result.OK:
+            return parse_output(result.stdout)
+    except:
+        print("Connection as installer failed.")
 
-    # Extract the lines containing user quota information
-    output = result['stdout'].split('\n')[3:]
-    
-    # Initialize an empty list to store extracted information
-    user_data = []    
-
-    # Iterate over each line to extract user quota information
-    
-    for line in output:
-        # Split the line into components
-        if line: # Check if the line is not empty
-            parts = line.split()
-            if len(parts) >= 2:
-                user_data.append(parts)
-
-    # Extract directory, user, and quota used
-    quota_info = []
-    
-    # Use a set to keep track of unique lines
-    unique_lines = set()
-
-    for line in user_data:
-        if len(line) < 2:
-            continue  # Skip lines with insufficient data
-    
-        if line[0] == '----------' and line[1] == '---------------------------------':
-            continue  # Skip separator lines
-    
-        user = line[0]
-        quota_used = line[1]
-        threshold_value, threshold_unit = parse_threshold(quota_used)
-        quota_used_tb = convert_threshold(threshold_value, threshold_unit)
-   
-        # Create a unique string representation of the line
-        line_str = f"{directory_name} {user} {quota_used_tb}"
-    
-        # Check if the line is unique, if not, skip it
-        if line_str in unique_lines:
-            continue
-
-        # Add the line to the set of unique lines
-        unique_lines.add(line_str)
-
-        quota_info.append({'directory': directory_name, 'user': user, 'quota_used_tb': quota_used_tb})
-
-    # Print the extracted information
-    for info in quota_info[1:]:
-        print(info)
-    #return "Hog report generated successfully and stored in hog_report.db"
-    return quota_info
+    # If both attempts fail, print a message and return an empty dictionary
+    print("Failed to connect to the server.")
+    return {}
 
 if __name__ == "__main__":
-    
     parser = argparse.ArgumentParser(prog="hogs_xfs_main", description="Filtering users with usage")
     parser.add_argument('-s', '--servers', nargs="+", required=True, help="List of servers or host name or IP address of one or more workstations.")
     parser.add_argument('-d', '--directory_path', type=str, required=True, help="Directories to be filtered")
     myargs = parser.parse_args()
-    #verbose = myargs.verbose
-    
-    for server in myargs.servers:
 
-    # Call hog_report function with provided parameters
+    for server in myargs.servers:
+        # Call hog_report function with provided parameters
         hogs_xfs_main(server, myargs.directory_path)
