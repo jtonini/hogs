@@ -31,6 +31,7 @@ from    threshold_parser    import  convert_threshold_main  as  convert_threshol
 from    hogs_ext_report     import  hogs_ext_main           as  hogs_ext
 from    hogs_xfs_report     import  hogs_xfs_main           as  hogs_xfs
 from    check_filesystem    import  check_filesystem
+from    parse_xfs_output    import  parse_xfs_output
 
 ###
 # From hpclib
@@ -183,7 +184,7 @@ def hogMaster_main(servers:str, directory_path:str, threshold_tb:float) -> dict:
             print(f"No quota enabled for {directory_path} on server {server}.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="hogMaster_main", description="Check quota enablement for directories on different servers.")
+    parser = argparse.ArgumentParser(prog="hogMaster", description="Check quota enablement for directories on different servers.")
     parser.add_argument("-s", "--servers", nargs="+", required=True, help="List of servers to connect to via SSH.")
     parser.add_argument("-d", "--directory_path", type=str, required=True, help="The path to the directory to check.")
     parser.add_argument("-th", "--threshold", type=str, required=True, help="The threshold to check.")

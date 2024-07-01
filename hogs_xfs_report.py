@@ -88,7 +88,7 @@ def hogs_xfs_main(server:str, directory_path:str) -> dict:
         # Try connecting as root first
         result=SloppyTree(dorunrun(f"ssh -o ConnectTimeout=1 root@{server} '{ssh_cmd}'", return_datatype=dict))
         if result.OK:
-            return parse_output(result.stdout)
+            return parse_xfs_output(result.stdout)
     except:
         print("Connection as root failed")
     
@@ -103,8 +103,8 @@ def hogs_xfs_main(server:str, directory_path:str) -> dict:
         print("Connection as installer failed.")
 
     # If both attempts fail, print a message and return an empty dictionary
-    print("Failed to connect to the server.")
-    return {}
+        print("Failed to connect to the server.")
+        return {}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="hogs_xfs_main", description="Filtering users with usage")
